@@ -1,0 +1,54 @@
+name: Atualizar e Hospedar Painel
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 22 * * *' # Roda todo dia às 22:00 UTC (19:00 Brasília)
+  workflow_dispatch: # Permite rodar manualmente pelo botão no GitHub
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+
+      - name: Instalar dependências
+        run: |
+          pip install polars jinja2 zeep httpx aiometer
+
+      - name: Restaurar Cache de Dados
+        uses: actions/cache@v4
+        with:
+          path: series/
+          key: series-data-${{ github.run_id }}
+          restore-keys: |
+            series-data-
+
+      - name: Baixar apenas novos dados do BC
+        run: python atualizar_series.py
+
+      - name: Gerar Site Estático
+        run: python gerar_site.py
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Subir artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './site'
+
+      - name: Implantar no GitHub Pages
+        uses: actions/deploy-pages@v4
