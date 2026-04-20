@@ -1,0 +1,12 @@
+[project]
+name = "bc"
+version = "0.1.0"
+requires-python = ">=3.14.4"
+dependencies = [
+    "aiometer>=1.0.0",
+    "httpx>=0.28.1",
+    "ipykernel>=7.2.0",
+    "jinja2>=3.1.6",
+    "polars[all]>=1.40.0",
+    "zeep>=4.3.2",
+]
