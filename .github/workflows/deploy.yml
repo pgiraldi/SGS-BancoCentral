@@ -26,7 +26,7 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          pip install polars jinja2 zeep httpx aiometer
+          pip install polars jinja2 zeep[async] httpx aiometer
 
       - name: Restaurar Cache de Dados
         uses: actions/cache@v4
