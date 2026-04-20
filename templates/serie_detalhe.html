@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Série: {{ serie.nome }}</title>
+    <meta name="description" content="Histórico completo e detalhes da série financeira {{ serie.nome }}.">
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+    <header>
+        <h1>{{ serie.nome }}</h1>
+        <nav>
+            <ul>
+                <li><a href="../index.html">Início</a></li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Navegar nas Séries ▾</a>
+                    <div class="dropdown-content">
+                        {% for serie_dd in series %}
+                        <a href="{{ serie_dd.id }}.html">{{ serie_dd.nome }}</a>
+                        {% endfor %}
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="detalhes-serie">
+            <div class="serie-hero-card">
+                <div class="hero-main">
+                    <h2>Último Valor Apurado</h2>
+                    <p class="valor-principal">
+                        <data value="{{ serie.stats_raw.ultimo }}">{{ serie.stats_fmt.ultimo }}</data>
+                        <span class="unidade">{{ serie.unidade }}</span>
+                    </p>
+                    <p class="variacao" style="color: {{ serie.cor_variacao }};">
+                        {{ serie.seta }} {{ serie.variacao_fmt }}% <span>vs anterior</span>
+                    </p>
+                </div>
+                <div class="hero-meta">
+                    <dl>
+                        <dt>Início da série</dt>
+                        <dd>{{ serie.data_inicial_legivel }}</dd>
+                        
+                        <dt>Última atualização</dt>
+                        <dd>{{ serie.data_legivel }}</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="stats-cards-grid">
+                <div class="stat-card">
+                    <h4>Valores Acumulados</h4>
+                    <div class="card-table-wrapper">
+                        <table class="card-table">
+                            <thead>
+                                <tr>
+                                    <th>Período</th>
+                                    <th>Acumulado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>No Ano ({{ serie.ano_atual }})</td>
+                                    <td>{% if serie.stats_fmt.acumulado_ano != '-' %}{{ serie.stats_fmt.acumulado_ano }}%{% else %}-{% endif %}</td>
+                                </tr>
+                                <tr>
+                                    <td>Últimos 12 Meses</td>
+                                    <td>{% if serie.stats_fmt.acumulado_12m != '-' %}{{ serie.stats_fmt.acumulado_12m }}%{% else %}-{% endif %}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <h4>Extremos da Série</h4>
+                    <div class="card-table-wrapper">
+                        <table class="card-table">
+                            <thead>
+                                <tr>
+                                    <th>Métrica</th>
+                                    <th>{{ serie.ano_atual }}</th>
+                                    <th>Histórico</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Maior Valor</td>
+                                    <td>{{ serie.stats_fmt.maior_ano }}</td>
+                                    <td>{{ serie.stats_fmt.maior_hist }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Menor Valor</td>
+                                    <td>{{ serie.stats_fmt.menor_ano }}</td>
+                                    <td>{{ serie.stats_fmt.menor_hist }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="historico-dados">
+            <div class="header-tabela">
+                <h2>Histórico de Valores</h2>
+                <div class="controles-tabela">
+                    <label for="anoSelector">Filtrar por ano:</label>
+                    <select id="anoSelector" onchange="mudarAno(this.value)">
+                        {% for ano in anos %}
+                        <option value="{{ ano }}">{{ ano }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Data Referência</th>
+                        <th scope="col">Valor ({{ serie.unidade }})</th>
+                    </tr>
+                </thead>
+                {% for ano, registros in dados_por_ano.items() %}
+                <tbody id="tbody-{{ ano }}" style="display: none;">
+                    {% for registro in registros %}
+                    <tr>
+                        <td><time datetime="{{ registro.data_iso }}">{{ registro.data_legivel }}</time></td>
+                        <td><data value="{{ registro.valor_puro }}">{{ registro.valor_formatado }}</data></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% endfor %}
+            </table>
+        </section>
+    </main>
+
+    <script>
+        // Função para mostrar apenas o corpo da tabela do ano selecionado
+        function mudarAno(ano) {
+            document.querySelectorAll('tbody[id^="tbody-"]').forEach(el => el.style.display = 'none');
+            document.getElementById('tbody-' + ano).style.display = 'table-row-group';
+        }
+        
+        // Exibir o primeiro ano da lista assim que a página carregar
+        window.onload = function() {
+            var select = document.getElementById('anoSelector');
+            if (select && select.options.length > 0) {
+                mudarAno(select.options[0].value);
+            }
+        }
+    </script>
+</body>
+</html>

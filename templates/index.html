@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indicadores Financeiros - Banco Central</title>
+    <meta name="description" content="Acompanhe os principais indicadores financeiros do Banco Central do Brasil.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Painel de Indicadores</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">Início</a></li>
+                <li class="dropdown">
+                    <a href="#" class="dropbtn">Navegar nas Séries ▾</a>
+                    <div class="dropdown-content">
+                        {% for serie_dd in series %}
+                        <a href="serie/{{ serie_dd.id }}.html">{{ serie_dd.nome }}</a>
+                        {% endfor %}
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="resumo-indicadores">
+            <h2>Visão Geral dos Principais Indicadores</h2>
+            <div class="cards-container">
+                {% for ind in destaques %}
+                <article class="card-detalhado">
+                    <div class="card-header">
+                        <h3>{{ ind.nome }}</h3>
+                        <p class="valor-principal">
+                            <data value="{{ ind.stats_raw.ultimo }}">{{ ind.stats_fmt.ultimo }}</data>
+                            <span class="unidade">{{ ind.unidade }}</span>
+                        </p>
+                        <p class="variacao" style="color: {{ ind.cor_variacao }}; font-weight: 600; font-size: 0.9rem; margin-top: 0.25rem;">
+                            {{ ind.seta }} {{ ind.variacao_fmt }}% 
+                            <span style="font-weight: 400; font-size: 0.8rem; color: var(--text-secondary);">vs anterior</span>
+                        </p>
+                        <time>Atualizado em: {{ ind.data_legivel }}</time>
+                    </div>
+                    
+                    <div class="card-body">
+                        <dl class="stats-grid">
+                            <dt>Acumulado {{ ind.ano_atual }}</dt>
+                            <dd>{% if ind.stats_fmt.acumulado_ano != '-' %}{{ ind.stats_fmt.acumulado_ano }}%{% else %}-{% endif %}</dd>
+                            
+                            <dt>Acumulado 12 meses</dt>
+                            <dd>{% if ind.stats_fmt.acumulado_12m != '-' %}{{ ind.stats_fmt.acumulado_12m }}%{% else %}-{% endif %}</dd>
+                        </dl>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <a href="serie/{{ ind.id }}.html">Ver Histórico Completo →</a>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+    </main>
+</body>
+</html>
