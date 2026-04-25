@@ -1,155 +1,400 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html class="light" lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalhes da Série: {{ serie.nome }}</title>
-    <meta name="description" content="Histórico completo e detalhes da série financeira {{ serie.nome }}.">
-    <link rel="stylesheet" href="../style.css">
-</head>
-<body>
-    <header>
-        <h1>{{ serie.nome }}</h1>
-        <nav>
-            <ul>
-                <li><a href="../index.html">Início</a></li>
-                <li class="dropdown">
-                    <a href="#" class="dropbtn">Navegar nas Séries ▾</a>
-                    <div class="dropdown-content">
-                        {% for serie_dd in series %}
-                        <a href="{{ serie_dd.id }}.html">{{ serie_dd.nome }}</a>
-                        {% endfor %}
-                    </div>
-                </li>
-            </ul>
-        </nav>
-    </header>
-
-    <main>
-        <section id="detalhes-serie">
-            <div class="serie-hero-card">
-                <div class="hero-main">
-                    <h2>Último Valor Apurado</h2>
-                    <p class="valor-principal">
-                        <data value="{{ serie.stats_raw.ultimo }}">{{ serie.stats_fmt.ultimo }}</data>
-                        <span class="unidade">{{ serie.unidade }}</span>
-                    </p>
-                    <p class="variacao" style="color: {{ serie.cor_variacao }};">
-                        {{ serie.seta }} {{ serie.variacao_fmt }}% <span>vs anterior</span>
-                    </p>
-                </div>
-                <div class="hero-meta">
-                    <dl>
-                        <dt>Início da série</dt>
-                        <dd>{{ serie.data_inicial_legivel }}</dd>
-                        
-                        <dt>Última atualização</dt>
-                        <dd>{{ serie.data_legivel }}</dd>
-                    </dl>
-                </div>
-            </div>
-
-            <div class="stats-cards-grid">
-                <div class="stat-card">
-                    <h4>Valores Acumulados</h4>
-                    <div class="card-table-wrapper">
-                        <table class="card-table">
-                            <thead>
-                                <tr>
-                                    <th>Período</th>
-                                    <th>Acumulado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>No Ano ({{ serie.ano_atual }})</td>
-                                    <td>{% if serie.stats_fmt.acumulado_ano != '-' %}{{ serie.stats_fmt.acumulado_ano }}%{% else %}-{% endif %}</td>
-                                </tr>
-                                <tr>
-                                    <td>Últimos 12 Meses</td>
-                                    <td>{% if serie.stats_fmt.acumulado_12m != '-' %}{{ serie.stats_fmt.acumulado_12m }}%{% else %}-{% endif %}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <h4>Extremos da Série</h4>
-                    <div class="card-table-wrapper">
-                        <table class="card-table">
-                            <thead>
-                                <tr>
-                                    <th>Métrica</th>
-                                    <th>{{ serie.ano_atual }}</th>
-                                    <th>Histórico</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Maior Valor</td>
-                                    <td>{{ serie.stats_fmt.maior_ano }}</td>
-                                    <td>{{ serie.stats_fmt.maior_hist }}</td>
-                                </tr>
-                                <tr>
-                                    <td>Menor Valor</td>
-                                    <td>{{ serie.stats_fmt.menor_ano }}</td>
-                                    <td>{{ serie.stats_fmt.menor_hist }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section id="historico-dados">
-            <div class="header-tabela">
-                <h2>Histórico de Valores</h2>
-                <div class="controles-tabela">
-                    <label for="anoSelector">Filtrar por ano:</label>
-                    <select id="anoSelector" onchange="mudarAno(this.value)">
-                        {% for ano in anos %}
-                        <option value="{{ ano }}">{{ ano }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            
-            <table>
-                <thead>
-                    <tr>
-                        <th scope="col">Data Referência</th>
-                        <th scope="col">Valor ({{ serie.unidade }})</th>
-                    </tr>
-                </thead>
-                {% for ano, registros in dados_por_ano.items() %}
-                <tbody id="tbody-{{ ano }}" style="display: none;">
-                    {% for registro in registros %}
-                    <tr>
-                        <td><time datetime="{{ registro.data_iso }}">{{ registro.data_legivel }}</time></td>
-                        <td><data value="{{ registro.valor_puro }}">{{ registro.valor_formatado }}</data></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-                {% endfor %}
-            </table>
-        </section>
-    </main>
-
-    <script>
-        // Função para mostrar apenas o corpo da tabela do ano selecionado
-        function mudarAno(ano) {
-            document.querySelectorAll('tbody[id^="tbody-"]').forEach(el => el.style.display = 'none');
-            document.getElementById('tbody-' + ano).style.display = 'table-row-group';
-        }
-        
-        // Exibir o primeiro ano da lista assim que a página carregar
-        window.onload = function() {
-            var select = document.getElementById('anoSelector');
-            if (select && select.options.length > 0) {
-                mudarAno(select.options[0].value);
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>BCB Analytics - Detalhes da Série</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#6366f1",
+                        "surface-container-low": "#f2f4f6",
+                        "background": "#f7f9fb",
+                        "on-background": "#191c1e"
+                    }
+                }
             }
         }
+    </script>
+    <style>
+        body { overflow-x: hidden; }
+        .main-content { min-width: 0; }
+    </style>
+    <script>
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('color-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('color-theme', 'dark');
+            }
+        }
+    </script>
+    <style>
+        /* Estilos adicionais se necessário */
+    </style>
+</head>
+<body class="bg-background dark:bg-slate-950 text-on-background dark:text-slate-100 font-sans min-h-screen flex flex-col">
+    <!-- TopAppBar -->
+    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm flex justify-between items-center w-full px-6 h-16 fixed top-0 z-40">
+        <div class="flex items-center gap-4">
+            <span class="text-lg font-bold text-slate-900 dark:text-white tracking-widest uppercase">BCB Analytics</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="relative hidden md:block">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <input class="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-200 focus:outline-none w-64" placeholder="Pesquisar..." type="text"/>
+            </div>
+            <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400">
+                <span class="material-symbols-outlined dark:hidden">dark_mode</span>
+                <span class="material-symbols-outlined hidden dark:block">light_mode</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 pt-16">
+        <!-- SideNavBar -->
+        <nav class="hidden md:flex flex-col w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 fixed left-0 top-16 bottom-0 z-30">
+            <div class="px-6 py-8">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Menu</div>
+                <div class="text-lg font-bold text-slate-900 dark:text-white">Dados Econômicos</div>
+            </div>
+            <div class="flex-1 overflow-y-auto px-4">
+                <ul class="space-y-1">
+                    <li>
+                        <a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 p-3 hover:text-primary dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 transition-all" href="../index.html">
+                            <span class="material-symbols-outlined">dashboard</span>
+                            Dashboard
+                        </a>
+                    </li>
+                    {% for s in series %}
+                    <li>
+                        <div class="flex items-center group">
+                            <a class="flex-1 flex items-center gap-3 {% if s.id == serie.id %}bg-white dark:bg-slate-800 text-primary dark:text-white border-l-4 border-primary{% else %}text-slate-500 dark:text-slate-400{% endif %} p-3 rounded-r-lg transition-all hover:bg-white dark:hover:bg-slate-800" href="{{ s.id }}.html">
+                                <span class="material-symbols-outlined text-sm">insights</span>
+                                <span class="text-sm">{{ s.nome }}</span>
+                            </a>
+                            <button onclick="togglePin('{{ s.id }}')" class="p-2 text-slate-300 hover:text-amber-400 transition-colors pin-btn" data-id="{{ s.id }}">
+                                <span class="material-symbols-outlined text-lg">push_pin</span>
+                            </button>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <!-- Footer back in sidebar -->
+            <div class="px-6 py-6 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-loose">
+                <div>© 2024 BCB Analytics</div>
+                <div class="mt-2 flex flex-col gap-1">
+                    <a href="https://www.bcb.gov.br/" target="_blank" class="hover:text-primary transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+                        BCB Oficial
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 ml-0 md:ml-64 p-6 lg:p-8 main-content overflow-x-hidden">
+            <div class="max-w-7xl mx-auto space-y-8">
+                <!-- Header -->
+                <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">CÓDIGO: {{ serie.id }}</p>
+                        <h1 class="text-3xl font-bold text-slate-900 dark:text-white">{{ serie.nome }}</h1>
+                        <p class="text-slate-500 dark:text-slate-400 mt-1">{{ serie.unidade }} | Histórico desde {{ serie.data_inicial_legivel }}</p>
+                    </div>
+                    <button onclick="exportCSV()" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-xs font-bold hover:opacity-90 transition-opacity">
+                        <span class="material-symbols-outlined text-sm">download</span>
+                        EXPORTAR CSV
+                    </button>
+                </div>
+
+                <!-- KPI Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Último Valor</p>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-3xl font-bold text-slate-900 dark:text-white">{{ serie.stats_fmt.ultimo }}%</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1">Ref: {{ serie.data_legivel }}</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">No Ano ({{ serie.ano_atual }})</p>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-3xl font-bold text-slate-900 dark:text-white">{% if serie.stats_fmt.acumulado_ano != '-' %}{{ serie.stats_fmt.acumulado_ano }}%{% else %}-{% endif %}</span>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Últimos 12 Meses</p>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-3xl font-bold text-slate-900 dark:text-white">{% if serie.stats_fmt.acumulado_12m != '-' %}{{ serie.stats_fmt.acumulado_12m }}%{% else %}-{% endif %}</span>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Máximo Histórico</p>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-3xl font-bold text-slate-900 dark:text-white">{{ serie.stats_fmt.maior_hist }}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-200 dark:border-slate-800">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white">Tendência Histórica</h3>
+                        <div class="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                            <button onclick="changePeriod(1, this)" class="period-btn px-4 py-2 text-xs font-bold rounded-lg transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm">1A</button>
+                            <button onclick="changePeriod(5, this)" class="period-btn px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-primary">5A</button>
+                            <button onclick="changePeriod(0, this)" class="period-btn px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-primary">MÁX</button>
+                        </div>
+                    </div>
+                    <div class="h-[400px] w-full">
+                        <canvas id="detailChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+                        <h3 class="font-bold text-slate-900 dark:text-white">Histórico Detalhado</h3>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">FILTRAR ANO:</label>
+                            <div class="relative flex items-center">
+                                <select id="anoSelector" onchange="mudarAno(this.value)" class="appearance-none bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold pl-3 pr-8 py-2 focus:ring-2 focus:ring-primary/20 outline-none cursor-pointer w-24">
+                                    {% for ano in anos %}
+                                    <option value="{{ ano }}">{{ ano }}</option>
+                                    {% endfor %}
+                                </select>
+                                <span class="material-symbols-outlined absolute right-2 pointer-events-none text-slate-400 text-lg">expand_more</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead>
+                                <tr class="bg-slate-50/50 dark:bg-slate-800/50 text-slate-400 text-[10px] font-bold uppercase tracking-widest border-y border-slate-200 dark:border-slate-700">
+                                    <th class="px-6 py-4 text-center border-x border-slate-200/50 dark:border-slate-700/50">Data Referência</th>
+                                    <th class="px-6 py-4 text-center border-x border-slate-200/50 dark:border-slate-700/50">Valor</th>
+                                </tr>
+                            </thead>
+                            {% for ano, registros in dados_por_ano.items() %}
+                            <tbody id="tbody-{{ ano }}" class="text-sm divide-y divide-slate-100 dark:divide-slate-800" style="display: none;">
+                                {% for registro in registros %}
+                                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-slate-600 dark:text-slate-300">
+                                    <td class="px-6 py-4 text-center border-x border-slate-100/50 dark:border-slate-800/50">{{ registro.data_legivel }}</td>
+                                    <td class="px-6 py-4 text-center border-x border-slate-100/50 dark:border-slate-800/50 font-bold text-slate-900 dark:text-white">{{ registro.valor_formatado }}%</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            {% endfor %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer removed from here -->
+
+
+    <script>
+        function mudarAno(ano) {
+            document.querySelectorAll('tbody[id^="tbody-"]').forEach(el => el.style.display = 'none');
+            const target = document.getElementById('tbody-' + ano);
+            if (target) target.style.display = 'table-row-group';
+        }
+
+        const chartData = {
+            labels: [
+                {% set count = 0 %}
+                {% for ano in anos | reverse %}
+                    {% for registro in dados_por_ano[ano] | reverse %}
+                        "{{ registro.data_legivel }}",
+                    {% endfor %}
+                {% endfor %}
+            ],
+            values: [
+                {% for ano in anos | reverse %}
+                    {% for registro in dados_por_ano[ano] | reverse %}
+                        {{ (registro.valor_puro * 100) | round(4) }},
+                    {% endfor %}
+                {% endfor %}
+            ]
+        };
+
+        let currentChart = null;
+        let currentPeriod = 1; // 1 means 1 Year default
+
+        function changePeriod(years, btn) {
+            currentPeriod = years;
+            
+            // UI Update
+            document.querySelectorAll('.period-btn').forEach(b => {
+                b.classList.remove('bg-white', 'dark:bg-slate-700', 'text-primary', 'dark:text-white', 'shadow-sm');
+                b.classList.add('text-slate-500');
+            });
+            btn.classList.add('bg-white', 'dark:bg-slate-700', 'text-primary', 'dark:text-white', 'shadow-sm');
+            btn.classList.remove('text-slate-500');
+
+            renderChart();
+        }
+
+        function getPointsForPeriod(labels, years) {
+            if (years === 0) return labels.length;
+            
+            // Labels are in dd/mm/yy or dd/mm/yyyy format
+            const parseDate = (str) => {
+                const parts = str.split('/').map(Number);
+                const y = parts[2] < 100 ? 2000 + parts[2] : parts[2];
+                return new Date(y, parts[1] - 1, parts[0]).getTime();
+            };
+
+            const lastTime = parseDate(labels[labels.length - 1]);
+            // 1 year = 365 days
+            const targetTime = lastTime - (years * 365 * 24 * 60 * 60 * 1000);
+
+            let count = 0;
+            for (let i = labels.length - 1; i >= 0; i--) {
+                if (parseDate(labels[i]) < targetTime) break;
+                count++;
+            }
+            return count;
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('detailChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+
+            const isDark = document.documentElement.classList.contains('dark');
+            
+            let labels = chartData.labels;
+            let values = chartData.values;
+            
+            const points = getPointsForPeriod(labels, currentPeriod);
+            labels = labels.slice(-points);
+            values = values.slice(-points);
+
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '{{ serie.nome }}',
+                        data: values,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { 
+                            grid: { display: false },
+                            ticks: { color: isDark ? '#94a3b8' : '#64748b', maxTicksLimit: 12 }
+                        },
+                        y: {
+                            grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
+                            ticks: { 
+                                color: isDark ? '#94a3b8' : '#64748b',
+                                callback: function(value) { return value.toFixed(4) + '%'; }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toFixed(4) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Pinning Logic
+        let pinnedIds = JSON.parse(localStorage.getItem('pinnedSeries') || '[]');
+
+        function togglePin(id) {
+            let currentPins = JSON.parse(localStorage.getItem('pinnedSeries') || '[]');
+            const index = currentPins.indexOf(id);
+            if (index > -1) {
+                currentPins.splice(index, 1);
+            } else {
+                if (currentPins.length >= 4) currentPins.shift();
+                currentPins.push(id);
+            }
+            localStorage.setItem('pinnedSeries', JSON.stringify(currentPins));
+            updatePinButtons();
+        }
+
+        function updatePinButtons() {
+            let currentPins = JSON.parse(localStorage.getItem('pinnedSeries') || '[]');
+            document.querySelectorAll('.pin-btn').forEach(btn => {
+                const id = btn.getAttribute('data-id');
+                if (currentPins.includes(id)) {
+                    btn.classList.add('text-amber-400');
+                    btn.classList.remove('text-slate-300');
+                } else {
+                    btn.classList.remove('text-amber-400');
+                    btn.classList.add('text-slate-300');
+                }
+            });
+        }
+
+        function exportCSV() {
+            let csv = 'Data,Valor ({{ serie.unidade }})\n';
+            chartData.labels.forEach((label, i) => {
+                csv += `${label},${chartData.values[i]}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "serie_{{ serie.id }}.csv");
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.onload = () => {
+            mudarAno(document.getElementById('anoSelector').value);
+            renderChart();
+            updatePinButtons();
+        };
     </script>
 </body>
 </html>

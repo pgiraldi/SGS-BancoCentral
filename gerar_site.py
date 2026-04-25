@@ -6,8 +6,8 @@ from datetime import timedelta, date
 
 # Configurações de Pastas
 PASTA_SERIES = Path('./series')
-PASTA_TEMPLATES = Path('./templates')
-PASTA_SAIDA = Path('./site')
+PASTA_TEMPLATES = Path('./templates') # Usa a nova pasta de templates
+PASTA_SAIDA = Path('./site')           # Saída separada para o novo modelo
 
 def preparar_pastas():
     if PASTA_SAIDA.exists():
@@ -15,25 +15,28 @@ def preparar_pastas():
     PASTA_SAIDA.mkdir(exist_ok=True)
     (PASTA_SAIDA / 'serie').mkdir(exist_ok=True)
     
-    # Copiar o arquivo de CSS para a raiz do site
-    caminho_css = PASTA_TEMPLATES / 'style.css'
-    if caminho_css.exists():
-        shutil.copy(caminho_css, PASTA_SAIDA / 'style.css')
+    # Nota: templates_2 não usa style.css separado (Tailwind via CDN)
 
 def formatar(valor):
     if valor is None:
         return "-"
     try:
-        return f"{float(valor) * 100:.4f}".replace('.', ',')
+        # Multiplicamos por 100 para exibir como percentual nominal (ex: 4,52)
+        val = float(valor) * 100
+        # Formata com 4 casas e remove zeros desnecessários à direita
+        s = f"{val:.4f}".replace('.', ',')
+        if ',' in s:
+            s = s.rstrip('0').rstrip(',')
+        return s
     except:
         return "-"
 
 def gerar_site():
-    print("Iniciando geração do site estático...")
+    print("Iniciando geração do site estático (Modelo 2)...")
     
     if not PASTA_SERIES.exists():
-        print("Erro: A pasta 'series' com os arquivos Parquet não foi encontrada.")
-        return
+        print("Aviso: A pasta 'series' não existe. Criando pasta vazia para evitar erro.")
+        PASTA_SERIES.mkdir(exist_ok=True)
 
     env = Environment(loader=FileSystemLoader(PASTA_TEMPLATES))
     template_index = env.get_template('index.html')
@@ -44,8 +47,8 @@ def gerar_site():
     series_info = []
     arquivos_validos = []
     
-    # Prioridade para exibir na home
-    id_destaques = ['11', '433', '12']
+    # ID das séries que aparecerão nos cards de destaque da Home
+    id_destaques = ['11', '433', '12', '432']
 
     # PASSO 1: Coletar metadados e calcular métricas de todas as séries
     for arquivo in PASTA_SERIES.glob('*.parquet'):
@@ -53,6 +56,7 @@ def gerar_site():
         try:
             df = pl.read_parquet(arquivo)
         except Exception as e:
+            print(f"Erro ao ler {arquivo}: {e}")
             continue
             
         if df.is_empty():
@@ -60,8 +64,10 @@ def gerar_site():
             
         arquivos_validos.append((id_serie, df))
         
+        # Identifica a coluna de valor (que não é 'data' nem 'data_final')
         col_valor = [c for c in df.columns if c not in ('data', 'data_final')][0]
         
+        # Extrai nome e unidade do cabeçalho da coluna (formato: "Nome - Unidade")
         partes = col_valor.split(' - ')
         if len(partes) >= 2:
             unidade = partes[-1]
@@ -73,35 +79,38 @@ def gerar_site():
         data_inicial = df['data'].min()
         data_final = df['data'].max()
         
-        # Últimos registros para variação
-        ultimos_registros = df.sort('data').tail(2).to_dicts()
+        # Calcula variação entre os dois últimos registros
+        df_sorted = df.sort('data')
+        ultimos_registros = df_sorted.tail(2).to_dicts()
         if len(ultimos_registros) >= 2:
             valor_ultimo = ultimos_registros[1][col_valor]
             valor_penultimo = ultimos_registros[0][col_valor]
+            # Variação percentual sobre o valor anterior
             if float(valor_penultimo) != 0:
                 variacao = (float(valor_ultimo) - float(valor_penultimo)) / abs(float(valor_penultimo)) * 100
             else:
                 variacao = 0.0
         else:
-            valor_ultimo = ultimos_registros[0][col_valor]
+            valor_ultimo = ultimos_registros[0][col_valor] if ultimos_registros else 0
             variacao = 0.0
             
+        # Define ícones e cores para o novo modelo (Tailwind classes)
         if variacao > 0:
             seta = "▲"
-            cor_variacao = "var(--text-success)"
+            cor_variacao = "text-error"     # No novo modelo, vermelho indica alta (inflação/juros)
             variacao_fmt = f"+{variacao:.2f}".replace('.', ',')
         elif variacao < 0:
             seta = "▼"
-            cor_variacao = "var(--text-danger)"
+            cor_variacao = "text-secondary" # Verde indica queda
             variacao_fmt = f"{variacao:.2f}".replace('.', ',')
         else:
             seta = "▬"
-            cor_variacao = "var(--text-secondary)"
+            cor_variacao = "text-slate-500"
             variacao_fmt = "0,00"
             
-        data_ultimo = ultimos_registros[-1]['data']
+        data_ultimo = ultimos_registros[-1]['data'] if ultimos_registros else date.today()
         
-        # Filtros para estatísticas
+        # Cálculo de estatísticas adicionais
         ano_atual = data_final.year
         df_ano = df.filter(pl.col('data').dt.year() == ano_atual)
         data_12m = data_final - timedelta(days=365)
@@ -109,9 +118,13 @@ def gerar_site():
         
         def calc_acumulado(df_subset):
             if df_subset.is_empty(): return 0.0
-            if "% a.a." in unidade:
+            if "% a.a." in unidade: # Séries já anualizadas não são acumuladas por produto
                 return None
-            return float((df_subset[col_valor] + 1).product() - 1)
+            try:
+                # Acúmulo de taxas (1+r1)*(1+r2)... - 1
+                return float((df_subset[col_valor] + 1).product() - 1)
+            except:
+                return 0.0
 
         stats_raw = {
             'ultimo': float(valor_ultimo),
@@ -124,6 +137,14 @@ def gerar_site():
         }
         stats_fmt = {k: formatar(v) for k, v in stats_raw.items()}
         
+        # Adiciona histórico completo para o gráfico da home (suporte ao botão MÁX)
+        historico_home = []
+        for row in df_sorted.to_dicts():
+            historico_home.append({
+                'data': row['data'].strftime('%d/%m/%y'),
+                'valor': float(row[col_valor]) * 100
+            })
+
         info = {
             'id': id_serie,
             'nome': nome_serie,
@@ -140,10 +161,11 @@ def gerar_site():
             'variacao_fmt': variacao_fmt,
             'data_iso': data_ultimo.strftime('%Y-%m-%d'),
             'data_legivel': data_ultimo.strftime('%d/%m/%Y'),
+            'historico_home': historico_home, # Novo campo para o gráfico
         }
         series_info.append(info)
 
-    # Ordenar os destaques
+    # Ordena as séries de destaque para a Home
     destaques_ordenados = []
     for pid in id_destaques:
         for s in series_info:
@@ -155,7 +177,7 @@ def gerar_site():
         info_serie = next(s for s in series_info if s['id'] == id_serie)
         col_valor = [c for c in df.columns if c not in ('data', 'data_final')][0]
         
-        # Agrupar por ano para paginação
+        # Agrupar por ano para o seletor da tabela
         dados_por_ano = {}
         anos = []
         for row in df.sort('data', descending=True).to_dicts():
@@ -172,19 +194,40 @@ def gerar_site():
                 'valor_formatado': formatar(val)
             })
             
-        html_serie_renderizado = template_serie.render(serie=info_serie, dados_por_ano=dados_por_ano, anos=anos, series=series_info)
+        html_serie_renderizado = template_serie.render(
+            serie=info_serie, 
+            dados_por_ano=dados_por_ano, 
+            anos=anos, 
+            series=series_info
+        )
         (PASTA_SAIDA / 'serie' / f'{id_serie}.html').write_text(html_serie_renderizado, encoding='utf-8')
-        print(f"✓ Página gerada: site/serie/{id_serie}.html")
+        print(f"✓ Página gerada: site_2/serie/{id_serie}.html")
+
+    # Preparar resumo de todas as séries para os favoritos dinâmicos
+    resumo_series = {}
+    for s_info in series_info:
+        resumo_series[s_info['id']] = {
+            'id': s_info['id'],
+            'nome': s_info['nome'],
+            'unidade': s_info['unidade'],
+            'stats_fmt': s_info['stats_fmt'],
+            'data_legivel': s_info['data_legivel'],
+            'seta': s_info['seta'],
+            'variacao_fmt': s_info['variacao_fmt'],
+            'historico_home': s_info['historico_home']
+        }
 
     # Renderiza a Home
-    ano_referencia = date.today().year
-    if destaques_ordenados:
-        ano_referencia = destaques_ordenados[0]['ano_atual']
-
-    html_index_renderizado = template_index.render(series=series_info, destaques=destaques_ordenados, ano_atual=ano_referencia)
+    data_hoje = date.today().strftime('%d/%m/%Y')
+    html_index_renderizado = template_index.render(
+        series=series_info, 
+        destaques=destaques_ordenados, 
+        resumo_series=resumo_series,
+        data_atual=data_hoje
+    )
     (PASTA_SAIDA / 'index.html').write_text(html_index_renderizado, encoding='utf-8')
-    print(f"✓ Página gerada: site/index.html")
-    print("SUCESSO!")
+    print(f"✓ Página gerada: site_2/index.html")
+    print("GERAÇÃO CONCLUÍDA COM SUCESSO! Verifique a pasta 'site_2'.")
 
 if __name__ == '__main__':
     gerar_site()

@@ -1,66 +1,485 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html class="light" lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Indicadores Financeiros - Banco Central</title>
-    <meta name="description" content="Acompanhe os principais indicadores financeiros do Banco Central do Brasil.">
-    <link rel="stylesheet" href="style.css">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>BCB Analytics - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#f2f4f6",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e6e8ea",
+                        "on-secondary-container": "#00714d",
+                        "background": "#f7f9fb",
+                        "on-tertiary-container": "#ff5452",
+                        "surface-container-highest": "#e0e3e5",
+                        "inverse-primary": "#b7c8de",
+                        "on-primary": "#ffffff",
+                        "surface-bright": "#f7f9fb",
+                        "primary": "#041627",
+                        "on-primary-fixed-variant": "#38485a",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8192a7",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#44474c",
+                        "secondary-fixed-dim": "#4edea3",
+                        "on-error-container": "#93000a",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#6ffbbe",
+                        "inverse-on-surface": "#eff1f3",
+                        "secondary": "#006c49",
+                        "on-background": "#191c1e",
+                        "primary-fixed": "#d2e4fb",
+                        "surface-dim": "#d8dadc",
+                        "primary-fixed-dim": "#b7c8de",
+                        "on-tertiary-fixed-variant": "#930013",
+                        "on-secondary-fixed": "#002113",
+                        "primary-container": "#1a2b3c",
+                        "inverse-surface": "#2d3133",
+                        "secondary-container": "#6cf8bb",
+                        "surface-tint": "#4f6073",
+                        "on-secondary-fixed-variant": "#005236",
+                        "surface-container": "#eceef0",
+                        "surface-variant": "#e0e3e5",
+                        "outline-variant": "#c4c6cd",
+                        "on-tertiary-fixed": "#410004",
+                        "on-primary-fixed": "#0b1d2d",
+                        "outline": "#74777d",
+                        "tertiary-fixed": "#ffdad7",
+                        "tertiary": "#350003",
+                        "surface": "#f7f9fb",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#ffb3ad",
+                        "on-surface": "#191c1e",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-container": "#5c0008"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .shadow-ambient {
+            box-shadow: 0 4px 12px rgba(4, 22, 39, 0.05);
+        }
+        /* Fix for potential horizontal scroll on layout */
+        body { overflow-x: hidden; }
+        .main-content { min-width: 0; }
+    </style>
+    <script>
+        // Automatic Dark Mode detection
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('color-theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('color-theme', 'dark');
+            }
+        }
+    </script>
 </head>
-<body>
-    <header>
-        <h1>Painel de Indicadores</h1>
-        <nav>
-            <ul>
-                <li><a href="index.html">Início</a></li>
-                <li class="dropdown">
-                    <a href="#" class="dropbtn">Navegar nas Séries ▾</a>
-                    <div class="dropdown-content">
-                        {% for serie_dd in series %}
-                        <a href="serie/{{ serie_dd.id }}.html">{{ serie_dd.nome }}</a>
-                        {% endfor %}
-                    </div>
-                </li>
-            </ul>
-        </nav>
+<body class="bg-background dark:bg-slate-950 text-on-background dark:text-slate-100 font-sans min-h-screen flex flex-col">
+    <!-- TopAppBar -->
+    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm flex justify-between items-center w-full px-6 h-16 fixed top-0 z-40">
+        <div class="flex items-center gap-4">
+            <span class="text-lg font-bold text-slate-900 dark:text-white tracking-widest uppercase">BCB Analytics</span>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="relative hidden md:block">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+                <input class="pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-on-surface dark:text-slate-200 focus:outline-none w-64" placeholder="Pesquisar..." type="text"/>
+            </div>
+            <button onclick="toggleTheme()" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-500 dark:text-slate-400">
+                <span class="material-symbols-outlined dark:hidden">dark_mode</span>
+                <span class="material-symbols-outlined hidden dark:block">light_mode</span>
+            </button>
+        </div>
     </header>
 
-    <main>
-        <section id="resumo-indicadores">
-            <h2>Visão Geral dos Principais Indicadores</h2>
-            <div class="cards-container">
-                {% for ind in destaques %}
-                <article class="card-detalhado">
-                    <div class="card-header">
-                        <h3>{{ ind.nome }}</h3>
-                        <p class="valor-principal">
-                            <data value="{{ ind.stats_raw.ultimo }}">{{ ind.stats_fmt.ultimo }}</data>
-                            <span class="unidade">{{ ind.unidade }}</span>
-                        </p>
-                        <p class="variacao" style="color: {{ ind.cor_variacao }}; font-weight: 600; font-size: 0.9rem; margin-top: 0.25rem;">
-                            {{ ind.seta }} {{ ind.variacao_fmt }}% 
-                            <span style="font-weight: 400; font-size: 0.8rem; color: var(--text-secondary);">vs anterior</span>
-                        </p>
-                        <time>Atualizado em: {{ ind.data_legivel }}</time>
-                    </div>
-                    
-                    <div class="card-body">
-                        <dl class="stats-grid">
-                            <dt>Acumulado {{ ind.ano_atual }}</dt>
-                            <dd>{% if ind.stats_fmt.acumulado_ano != '-' %}{{ ind.stats_fmt.acumulado_ano }}%{% else %}-{% endif %}</dd>
-                            
-                            <dt>Acumulado 12 meses</dt>
-                            <dd>{% if ind.stats_fmt.acumulado_12m != '-' %}{{ ind.stats_fmt.acumulado_12m }}%{% else %}-{% endif %}</dd>
-                        </dl>
-                    </div>
-                    
-                    <div class="card-footer">
-                        <a href="serie/{{ ind.id }}.html">Ver Histórico Completo →</a>
-                    </div>
-                </article>
-                {% endfor %}
+    <div class="flex flex-1 pt-16">
+        <!-- SideNavBar -->
+        <nav class="hidden md:flex flex-col w-64 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 fixed left-0 top-16 bottom-0 z-30">
+            <div class="px-6 py-8">
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Menu</div>
+                <div class="text-lg font-bold text-slate-900 dark:text-white">Dados Econômicos</div>
             </div>
-        </section>
-    </main>
+            <div class="flex-1 overflow-y-auto px-4">
+                <ul class="space-y-1">
+                    <li>
+                        <a class="flex items-center gap-3 bg-white dark:bg-slate-800 text-primary dark:text-white border-l-4 border-primary p-3 rounded-r-lg transition-all" href="index.html">
+                            <span class="material-symbols-outlined">dashboard</span>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    {% for s in series %}
+                    <li>
+                        <div class="flex items-center group">
+                            <a class="flex-1 flex items-center gap-3 text-slate-500 dark:text-slate-400 p-3 hover:text-primary dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 transition-all" href="serie/{{ s.id }}.html">
+                                <span class="material-symbols-outlined text-sm">insights</span>
+                                <span class="text-sm">{{ s.nome }}</span>
+                            </a>
+                            <button onclick="togglePin('{{ s.id }}')" class="p-2 text-slate-300 hover:text-amber-400 transition-colors pin-btn" data-id="{{ s.id }}">
+                                <span class="material-symbols-outlined text-lg">push_pin</span>
+                            </button>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <!-- Footer back in sidebar -->
+            <div class="px-6 py-6 border-t border-slate-200 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-loose">
+                <div>© 2024 BCB Analytics</div>
+                <div class="mt-2 flex flex-col gap-1">
+                    <a href="https://www.bcb.gov.br/" target="_blank" class="hover:text-primary transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+                        BCB Oficial
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 ml-0 md:ml-64 p-6 lg:p-8 main-content overflow-x-hidden">
+            <div class="max-w-7xl mx-auto space-y-8">
+                <!-- Header -->
+                <div>
+                    <h1 class="text-3xl font-bold text-primary dark:text-white mb-1">Painel de Indicadores</h1>
+                    <p class="text-slate-500 dark:text-slate-400">Principais indicadores do Banco Central do Brasil em tempo real.</p>
+                </div>
+
+                <!-- KPI Grid (Dynamic) -->
+                <div id="kpi-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Cards populated by JS -->
+                    {% for ind in destaques %}
+                    <div onclick="updateChart('{{ ind.id }}')" class="cursor-pointer bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 hover:border-primary dark:hover:border-primary transition-all group kpi-card" data-id="{{ ind.id }}">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ ind.nome }}</span>
+                            <span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">analytics</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-4xl font-bold text-slate-900 dark:text-white">{{ ind.stats_fmt.ultimo }}%</span>
+                            </div>
+                            <span class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ ind.unidade }}</span>
+                            <span class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Ref: {{ ind.data_legivel }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-4 pt-4 border-t border-slate-50 dark:border-slate-800/50">
+                            {% if ind.seta == "▲" %}
+                            <div class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-1 rounded text-xs font-bold flex items-center">
+                                <span class="material-symbols-outlined text-sm">trending_up</span>
+                                <span class="ml-1">{{ ind.variacao_fmt }}%</span>
+                            </div>
+                            {% elif ind.seta == "▼" %}
+                            <div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded text-xs font-bold flex items-center">
+                                <span class="material-symbols-outlined text-sm">trending_down</span>
+                                <span class="ml-1">{{ ind.variacao_fmt }}%</span>
+                            </div>
+                            {% else %}
+                            <div class="bg-slate-50 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded text-xs font-bold">
+                                ▬ 0,00%
+                            </div>
+                            {% endif %}
+                            <span class="text-[10px] text-slate-400">vs anterior</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Main Chart Area -->
+                <div class="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-sm border border-slate-200 dark:border-slate-800">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div>
+                            <h2 id="chartTitle" class="text-xl font-bold text-slate-900 dark:text-white">Evolução Histórica</h2>
+                            <p id="chartSubtitle" class="text-sm text-slate-500 dark:text-slate-400">Clique em um card acima para visualizar os dados.</p>
+                        </div>
+                        <div class="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                            <button onclick="changePeriod(1, this)" class="period-btn px-4 py-2 text-xs font-bold rounded-lg transition-all bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm">1A</button>
+                            <button onclick="changePeriod(5, this)" class="period-btn px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-primary">5A</button>
+                            <button onclick="changePeriod(0, this)" class="period-btn px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-primary">MÁX</button>
+                        </div>
+                    </div>
+                    <div class="h-[400px] w-full relative">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer removed from here -->
+
+
+    <script>
+        const allResumo = {{ resumo_series | tojson }};
+        const defaultDestaques = {{ destaques | map(attribute='id') | list | tojson }};
+
+        const seriesData = {
+            {% for ind in destaques %}
+            "{{ ind.id }}": {
+                name: "{{ ind.nome }}",
+                unit: "{{ ind.unidade }}",
+                labels: {{ ind.historico_home | map(attribute='data') | list | tojson }},
+                values: {{ ind.historico_home | map(attribute='valor') | list | tojson }}
+            },
+            {% endfor %}
+        };
+
+        let currentChart = null;
+        let currentId = null;
+        let currentPeriod = 1; // 1 means 1 Year default
+
+        function changePeriod(years, btn) {
+            currentPeriod = years;
+            
+            // UI Update
+            document.querySelectorAll('.period-btn').forEach(b => {
+                b.classList.remove('bg-white', 'dark:bg-slate-700', 'text-primary', 'dark:text-white', 'shadow-sm');
+                b.classList.add('text-slate-500');
+            });
+            btn.classList.add('bg-white', 'dark:bg-slate-700', 'text-primary', 'dark:text-white', 'shadow-sm');
+            btn.classList.remove('text-slate-500');
+
+            if (currentId) updateChart(currentId);
+        }
+
+        function getPointsForPeriod(labels, years) {
+            if (years === 0) return labels.length;
+            
+            const parseDate = (str) => {
+                const parts = str.split('/').map(Number);
+                const y = parts[2] < 100 ? 2000 + parts[2] : parts[2];
+                // simple date constructor for comparison
+                return new Date(y, parts[1] - 1, parts[0]).getTime();
+            };
+
+            const lastTime = parseDate(labels[labels.length - 1]);
+            // 1 year = 365 days
+            const targetTime = lastTime - (years * 365 * 24 * 60 * 60 * 1000);
+
+            let count = 0;
+            for (let i = labels.length - 1; i >= 0; i--) {
+                if (parseDate(labels[i]) < targetTime) break;
+                count++;
+            }
+            return count;
+        }
+
+        function updateChart(id) {
+            currentId = id;
+            
+            let data = seriesData[id];
+            // If not in pre-baked highlights, get from global summary
+            if (!data && allResumo[id]) {
+                const res = allResumo[id];
+                data = {
+                    name: res.nome,
+                    unit: res.unidade,
+                    labels: res.historico_home.map(h => h.data),
+                    values: res.historico_home.map(h => h.valor)
+                };
+            }
+            if (!data) return;
+
+            // Highlight selected card
+            document.querySelectorAll('.kpi-card').forEach(card => {
+                if (card.getAttribute('data-id') === id) {
+                    card.classList.add('ring-2', 'ring-indigo-500', 'border-indigo-500', 'bg-indigo-50/50', 'dark:bg-indigo-900/10');
+                    card.classList.remove('border-slate-200', 'dark:border-slate-800');
+                } else {
+                    card.classList.remove('ring-2', 'ring-indigo-500', 'border-indigo-500', 'bg-indigo-50/50', 'dark:bg-indigo-900/10');
+                    card.classList.add('border-slate-200', 'dark:border-slate-800');
+                }
+            });
+
+            document.getElementById('chartTitle').innerText = 'Evolução: ' + data.name;
+            document.getElementById('chartSubtitle').innerText = 'Histórico recente (' + data.unit + ')';
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
+            // Filter data based on period
+            let labels = data.labels;
+            let values = data.values;
+            const points = getPointsForPeriod(labels, currentPeriod);
+            labels = labels.slice(-points);
+            values = values.slice(-points);
+
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: data.name,
+                        data: values,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointHoverBackgroundColor: '#6366f1',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: isDark ? '#1e293b' : '#fff',
+                            titleColor: isDark ? '#fff' : '#1e293b',
+                            bodyColor: isDark ? '#cbd5e1' : '#64748b',
+                            borderColor: isDark ? '#334155' : '#e2e8f0',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y.toFixed(4) + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }
+                        },
+                        y: {
+                            grid: { color: gridColor },
+                            ticks: { 
+                                color: textColor,
+                                callback: function(value) { return value.toFixed(4) + '%'; }
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        // Pinning Logic
+        let pinnedIds = JSON.parse(localStorage.getItem('pinnedSeries') || '[]');
+
+        function togglePin(id) {
+            let currentPins = JSON.parse(localStorage.getItem('pinnedSeries') || '[]');
+            const index = currentPins.indexOf(id);
+            if (index > -1) {
+                currentPins.splice(index, 1);
+            } else {
+                if (currentPins.length >= 4) currentPins.shift();
+                currentPins.push(id);
+            }
+            localStorage.setItem('pinnedSeries', JSON.stringify(currentPins));
+            renderKPIs();
+            updatePinButtons();
+        }
+
+        function updatePinButtons() {
+            let currentPins = JSON.parse(localStorage.getItem('pinnedSeries') || '[]');
+            document.querySelectorAll('.pin-btn').forEach(btn => {
+                const id = btn.getAttribute('data-id');
+                if (currentPins.includes(id)) {
+                    btn.classList.add('text-amber-400');
+                    btn.classList.remove('text-slate-300');
+                } else {
+                    btn.classList.remove('text-amber-400');
+                    btn.classList.add('text-slate-300');
+                }
+            });
+        }
+
+        function renderKPIs() {
+            const container = document.getElementById('kpi-grid');
+            let currentPins = JSON.parse(localStorage.getItem('pinnedSeries') || '[]');
+            const displayIds = currentPins.length > 0 ? currentPins : defaultDestaques;
+            
+            container.innerHTML = '';
+            displayIds.forEach(id => {
+                const ind = allResumo[id];
+                if (!ind) return;
+                
+                const isActive = id === currentId;
+                const activeClasses = isActive ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-slate-200 dark:border-slate-800';
+                
+                const variationHtml = ind.seta === '▲' 
+                    ? `<div class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-1 rounded text-xs font-bold flex items-center">
+                        <span class="material-symbols-outlined text-sm">trending_up</span>
+                        <span class="ml-1">${ind.variacao_fmt}%</span>
+                       </div>`
+                    : ind.seta === '▼'
+                    ? `<div class="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded text-xs font-bold flex items-center">
+                        <span class="material-symbols-outlined text-sm">trending_down</span>
+                        <span class="ml-1">${ind.variacao_fmt}%</span>
+                       </div>`
+                    : `<div class="bg-slate-50 dark:bg-slate-800 text-slate-500 px-2 py-1 rounded text-xs font-bold">▬ 0,00%</div>`;
+
+                container.innerHTML += `
+                    <div onclick="updateChart('${ind.id}')" class="cursor-pointer bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border transition-all group kpi-card ${activeClasses}" data-id="${ind.id}">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">${ind.nome}</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-4xl font-bold text-slate-900 dark:text-white">${ind.stats_fmt.ultimo}%</span>
+                            </div>
+                            <span class="text-xs text-slate-500 dark:text-slate-400 mt-1">${ind.unidade}</span>
+                            <span class="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Ref: ${ind.data_legivel}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-4 pt-4 border-t border-slate-50 dark:border-slate-800/50">
+                            ${variationHtml}
+                            <span class="text-[10px] text-slate-400">vs anterior</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Initialize with first card if available
+        window.onload = () => {
+            renderKPIs();
+            updatePinButtons();
+            let currentPins = JSON.parse(localStorage.getItem('pinnedSeries') || '[]');
+            const firstId = currentPins.length > 0 ? currentPins[0] : defaultDestaques[0];
+            if (firstId) updateChart(firstId);
+        };
+    </script>
 </body>
 </html>
