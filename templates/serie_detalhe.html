@@ -169,8 +169,10 @@
                             <button onclick="changePeriod(0, this)" class="period-btn px-4 py-2 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-primary">MÁX</button>
                         </div>
                     </div>
-                    <div class="h-[400px] w-full">
-                        <canvas id="detailChart"></canvas>
+                    <div class="overflow-x-auto pb-4 scrollbar-thin">
+                        <div class="h-[300px] md:h-[400px] min-w-[600px] md:min-w-0 relative">
+                            <canvas id="detailChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -338,7 +340,10 @@
                     scales: {
                         x: { 
                             grid: { display: false },
-                            ticks: { color: isDark ? '#94a3b8' : '#64748b', maxTicksLimit: 12 }
+                            ticks: { 
+                                color: isDark ? '#94a3b8' : '#64748b', 
+                                maxTicksLimit: window.innerWidth < 768 ? 6 : 12 
+                            }
                         },
                         y: {
                             grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
